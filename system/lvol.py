@@ -152,8 +152,9 @@ def main():
     else:
         unit = size_unit
 
+    lvs_path = module.get_bin_path('lvs', True)
     rc, current_lvs, err = module.run_command(
-        "lvs --noheadings -o lv_name,size --units %s --separator ';' %s" % (unit, vg))
+        "%s --noheadings -o lv_name,size --units %s --separator ';' %s" % (lvs_path, unit, vg))
 
     if rc != 0:
         if state == 'absent':
@@ -185,7 +186,8 @@ def main():
             if module.check_mode:
                 changed = True
             else:
-                rc, _, err = module.run_command("lvcreate -n %s -%s %s%s %s" % (lv, size_opt, size, size_unit, vg))
+                lvcreate_path = module.get_bin_path('lvcreate', True)
+                rc, _, err = module.run_command("%s -n %s -%s %s%s %s" % (lvcreate_path, lv, size_opt, size, size_unit, vg))
                 if rc == 0:
                     changed = True
                 else:
@@ -197,7 +199,8 @@ def main():
                 module.exit_json(changed=True)
             if not force:
                 module.fail_json(msg="Sorry, no removal of logical volume %s without force=yes." % (this_lv['name']))
-            rc, _, err = module.run_command("lvremove --force %s/%s" % (vg, this_lv['name']))
+            lvremove_path = module.get_bin_path('lvremove', True)
+            rc, _, err = module.run_command("%s --force %s/%s" % (lvremove_path, vg, this_lv['name']))
             if rc == 0:
                 module.exit_json(changed=True)
             else:
@@ -209,11 +212,13 @@ def main():
             ### resize LV
             tool = None
             if size > this_lv['size']:
-                tool = 'lvextend'
+                lvextend_path = module.get_bin_path('lvextend', True)
+                tool = lvextend_path
             elif size < this_lv['size']:
                 if not force:
                     module.fail_json(msg="Sorry, no shrinking of %s without force=yes." % (this_lv['name']))
-                tool = 'lvreduce --force'
+                lvreduce_path = module.get_bin_path('lvreduce', True)
+                tool = "%s --force" % (lvreduce_path)
 
             if tool:
                 if module.check_mode:
